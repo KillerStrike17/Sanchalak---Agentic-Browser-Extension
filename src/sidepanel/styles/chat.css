@@ -1,0 +1,447 @@
+/* ─── Side Panel: Chat Styles ─────────────────────────────────────────────── */
+
+.sidepanel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+.sp-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.sp-header__logo {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sp-header__title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--color-text-primary), var(--color-text-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sp-header__status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sp-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: pulse 2s infinite;
+}
+
+.sp-status-dot.busy {
+  background: var(--color-warning);
+}
+
+/* ─── Messages Area ───────────────────────────────────────────────────────── */
+.sp-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sp-welcome {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  animation: fadeIn 0.6s ease-out;
+}
+
+.sp-welcome__icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-4);
+  background: linear-gradient(135deg, var(--color-accent), #8b5cf6, #a855f7);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  box-shadow: var(--shadow-glow);
+}
+
+.sp-welcome__title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.sp-welcome__subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.sp-welcome__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.sp-suggestion {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.sp-suggestion:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+  transform: translateX(4px);
+}
+
+/* ─── Message Bubbles ─────────────────────────────────────────────────────── */
+.msg {
+  max-width: 92%;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.msg-user {
+  align-self: flex-end;
+}
+
+.msg-user .msg__bubble {
+  background: linear-gradient(135deg, var(--color-accent), #7c3aed);
+  color: white;
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+}
+
+.msg-agent {
+  align-self: flex-start;
+}
+
+.msg-agent .msg__bubble {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+}
+
+.msg__bubble {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.msg__time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+  padding: 0 var(--space-2);
+}
+
+.msg-user .msg__time { text-align: right; }
+
+/* Thinking indicator */
+.msg-thinking .msg__bubble {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.thinking-dots {
+  display: flex;
+  gap: 3px;
+}
+.thinking-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* Action log messages */
+.msg-action {
+  align-self: center;
+  max-width: 100%;
+}
+
+.msg-action .msg__bubble {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.msg-action .msg__icon {
+  font-size: 12px;
+}
+
+.msg-action.success .msg__bubble { border-left: 3px solid var(--color-success); }
+.msg-action.error .msg__bubble { border-left: 3px solid var(--color-error); }
+.msg-action.info .msg__bubble { border-left: 3px solid var(--color-info); }
+
+/* ─── Task Status Bar ─────────────────────────────────────────────────────── */
+.sp-task-status {
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.sp-task-status__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.sp-task-status__text {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.sp-task-status__cancel {
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+.sp-task-status__cancel:hover { opacity: 1; }
+
+/* ─── Input Area ──────────────────────────────────────────────────────────── */
+.sp-input-area {
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.sp-input-wrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  transition: all var(--transition-fast);
+}
+
+.sp-input-wrapper:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-muted);
+}
+
+.sp-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  padding: var(--space-2) var(--space-3);
+  resize: none;
+  outline: none;
+  min-height: 36px;
+  max-height: 120px;
+  line-height: 1.5;
+}
+
+.sp-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.sp-send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.sp-send-btn:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-glow);
+}
+
+.sp-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ─── Confirmation Dialog ─────────────────────────────────────────────────── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.confirm-dialog {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  width: 90%;
+  max-width: 340px;
+  animation: slideUp 0.3s ease-out;
+}
+
+.confirm-dialog__icon {
+  width: 40px;
+  height: 40px;
+  background: var(--color-warning-muted);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: var(--space-4);
+}
+
+.confirm-dialog__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.confirm-dialog__description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+  line-height: 1.6;
+}
+
+.confirm-dialog__details {
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--font-size-xs);
+  font-family: monospace;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-5);
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.confirm-dialog__actions .btn {
+  flex: 1;
+}
+
+/* ─── Action Log Panel ────────────────────────────────────────────────────── */
+.action-log {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: var(--space-2) 0;
+  overflow: hidden;
+}
+
+.action-log__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+}
+
+.action-log__header:hover {
+  background: var(--color-surface);
+}
+
+.action-log__entries {
+  padding: 0 var(--space-3) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.action-log__entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) 0;
+  color: var(--color-text-muted);
+}
+
+.action-log__entry .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.action-log__entry.success .dot { background: var(--color-success); }
+.action-log__entry.error .dot { background: var(--color-error); }
+.action-log__entry.pending .dot { background: var(--color-text-muted); }

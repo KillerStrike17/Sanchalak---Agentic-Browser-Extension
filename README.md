@@ -1,0 +1,2 @@
+# Sanchalak - Agentic Browser Extension
+
