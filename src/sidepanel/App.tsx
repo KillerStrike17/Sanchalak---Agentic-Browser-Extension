@@ -18,8 +18,8 @@ const SUGGESTIONS = [
 ];
 
 export default function App() {
-  const { messages, taskStatus, stepDescription, isLoading, confirmation } = useChatStore();
-  const { sendCommand, confirmAction, cancelTask } = useAgent();
+  const { messages, taskStatus, stepDescription, isLoading, confirmation, sessionTurns } = useChatStore();
+  const { sendCommand, confirmAction, cancelTask, newChat } = useAgent();
   const [input, setInput] = useState('');
   const [activeProvider, setActiveProvider] = useState<LLMProvider>('google');
   const [activeModel, setActiveModel] = useState<string>('');
@@ -38,14 +38,11 @@ export default function App() {
   const handleProviderChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const provider = e.target.value as LLMProvider;
     setActiveProvider(provider);
-    
-    // Automatically switch to the default or previously saved model for this provider
     let newModel = '';
     if (userSettings) {
       newModel = userSettings.models[provider] || DEFAULT_MODELS[provider]?.[0] || '';
       setActiveModel(newModel);
-      
-      const newSettings = { 
+      const newSettings = {
         ...userSettings,
         activeProvider: provider,
         models: { ...userSettings.models, [provider]: newModel }
@@ -70,7 +67,6 @@ export default function App() {
     }
   };
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -80,7 +76,6 @@ export default function App() {
     if (!text || isLoading) return;
     setInput('');
     sendCommand(text);
-    // Reset textarea height
     if (inputRef.current) inputRef.current.style.height = 'auto';
   };
 
@@ -92,14 +87,12 @@ export default function App() {
   };
 
   const handleSuggestion = (suggestion: string) => {
-    // Strip emoji prefix
     const text = suggestion.replace(/^[^\s]+\s+"(.+)"$/, '$1');
     sendCommand(text);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    // Auto-resize
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
@@ -113,10 +106,10 @@ export default function App() {
       <header className="sp-header">
         <div className="sp-header__logo">🎯</div>
         <span className="sp-header__title">Sanchalak</span>
-        
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
-          <select 
-            value={activeProvider} 
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <select
+            value={activeProvider}
             onChange={handleProviderChange}
             style={{
               background: 'var(--color-bg-tertiary)',
@@ -126,7 +119,7 @@ export default function App() {
               padding: '2px 6px',
               fontSize: 'var(--font-size-xs)',
               outline: 'none',
-              cursor: 'pointer'
+              cursor: 'pointer',
             }}
           >
             <option value="openai">OpenAI</option>
@@ -134,9 +127,9 @@ export default function App() {
             <option value="google">Google</option>
             <option value="nvidia">NVIDIA</option>
           </select>
-          
-          <select 
-            value={activeModel} 
+
+          <select
+            value={activeModel}
             onChange={handleModelChange}
             style={{
               background: 'var(--color-bg-tertiary)',
@@ -147,7 +140,7 @@ export default function App() {
               fontSize: 'var(--font-size-xs)',
               outline: 'none',
               cursor: 'pointer',
-              maxWidth: '120px'
+              maxWidth: '120px',
             }}
           >
             {(DEFAULT_MODELS[activeProvider] || []).map(m => (
@@ -163,6 +156,27 @@ export default function App() {
           </span>
         </div>
       </header>
+
+      {/* Session Bar */}
+      <div className="sp-session-bar">
+        {sessionTurns > 0 ? (
+          <span className="sp-session-turns">
+            💬 {sessionTurns} turn{sessionTurns !== 1 ? 's' : ''} in session
+          </span>
+        ) : (
+          <span className="sp-session-turns" style={{ opacity: 0.4 }}>
+            New session
+          </span>
+        )}
+        <button
+          className="sp-new-chat-btn"
+          onClick={newChat}
+          disabled={isBusy}
+          title="Start a new conversation (clears context)"
+        >
+          + New Chat
+        </button>
+      </div>
 
       {/* Task Status Bar */}
       {isBusy && (

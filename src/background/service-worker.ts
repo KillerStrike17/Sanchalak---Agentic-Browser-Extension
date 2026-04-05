@@ -3,7 +3,27 @@
 
 import { registerNavigationTools } from './tools/navigation.tools';
 import { registerExtractionTools } from './tools/extraction.tools';
+// Phase 2
+import { registerFormTools } from './tools/form.tools';
+import { registerShoppingTools } from './tools/shopping.tools';
+import { registerEmailTools } from './tools/email.tools';
+import { registerResearchTools } from './tools/research.tools';
+// Phase 3
+import { registerCalendarTools } from './tools/calendar.tools';
+import { registerContentTools } from './tools/content.tools';
+import { registerCRMTools } from './tools/crm.tools';
+import { registerWorkflowTools } from './workflow/engine';
+import { initScheduler } from './workflow/scheduler';
+// Phase 4
+import { registerTabCoordinationTools } from './tools/tab.tools';
+import { registerAPITools } from './tools/api.tools';
+import { registerVisionTools } from './tools/vision.tools';
+import { registerAuthTools } from './tools/auth.tools';
+import { registerAccessibilityTools } from './tools/accessibility.tools';
+import { registerDocumentTools } from './tools/document.tools';
+import { registerFinancialTools } from './tools/financial.tools';
 import { executeTask, type PlannerCallbacks } from './agent/planner';
+import { conversationBuffer } from './agent/conversation-buffer';
 import { registerUIPort, broadcastToUI, getActiveTab, ensureContentScript, sendToTab } from '@shared/messaging';
 import { PORT_NAMES } from '@shared/constants';
 import { createLogger } from '@shared/logger';
@@ -17,10 +37,32 @@ const log = createLogger('background');
 
 log.info('Service worker starting...');
 
-// Register all tools
+// Phase 1
 registerNavigationTools();
 registerExtractionTools();
-log.info('Tools registered');
+// Phase 2
+registerFormTools();
+registerShoppingTools();
+registerEmailTools();
+registerResearchTools();
+// Phase 3
+registerCalendarTools();
+registerContentTools();
+registerCRMTools();
+registerWorkflowTools();
+// Phase 4
+registerTabCoordinationTools();
+registerAPITools();
+registerVisionTools();
+registerAuthTools();
+registerAccessibilityTools();
+registerDocumentTools();
+registerFinancialTools();
+
+// Initialize workflow scheduler (sets up chrome.alarms for recurring workflows)
+initScheduler();
+
+log.info('Tools registered — Phase 1-4 active');
 
 // Track current task state
 let isTaskRunning = false;
@@ -50,8 +92,17 @@ chrome.runtime.onMessage.addListener(
         sendResponse({ received: true });
         break;
 
+      case 'CLEAR_CONVERSATION':
+        conversationBuffer.clear();
+        broadcastToUI({
+          type: 'TASK_STATUS',
+          status: 'idle',
+          requestId: message.requestId,
+        });
+        sendResponse({ cleared: true });
+        break;
+
       case 'PAGE_STATE':
-        // Auto page state from content script
         log.debug('Page state received', { url: (message as { state: PageState }).state?.url });
         sendResponse({ received: true });
         break;
@@ -60,7 +111,7 @@ chrome.runtime.onMessage.addListener(
         chrome.tabs.captureVisibleTab(undefined, { format: 'png' })
           .then((screenshot) => sendResponse({ screenshot }))
           .catch((err) => sendResponse({ error: String(err) }));
-        return true; // Keep channel open
+        return true;
 
       case 'GET_PAGE_STATE':
         getPageState().then((state) => sendResponse(state)).catch((err) =>
@@ -101,6 +152,13 @@ chrome.runtime.onConnect.addListener((port) => {
           pendingConfirmationResolve(message.approved);
           pendingConfirmationResolve = null;
         }
+      } else if (message.type === 'CLEAR_CONVERSATION') {
+        conversationBuffer.clear();
+        broadcastToUI({
+          type: 'TASK_STATUS',
+          status: 'idle',
+          requestId: message.requestId,
+        });
       }
     });
   }
@@ -167,18 +225,21 @@ async function handleUserCommand(text: string, requestId: string): Promise<void>
   log.info('Handling user command', { text, requestId });
 
   try {
-    // Get current page state
     const pageState = await getPageState();
-
     const tab = await getActiveTab();
     const tabId = tab.id || 0;
 
-    // Build callbacks for UI updates
+    // Grab prior conversation turns for multi-turn context
+    const history = conversationBuffer.toMessages();
+    if (history.length > 0) {
+      log.info(`Injecting ${conversationBuffer.turnCount} prior turns into context`);
+    }
+
     const callbacks: PlannerCallbacks = {
       onThinking: (thought) => {
         broadcastToUI({ type: 'AGENT_THINKING', thought, requestId });
       },
-      onAction: (tool, params) => {
+      onAction: (tool, _params) => {
         broadcastToUI({
           type: 'TASK_STATUS',
           status: 'executing',
@@ -200,7 +261,6 @@ async function handleUserCommand(text: string, requestId: string): Promise<void>
             requestId,
           });
 
-          // Timeout after 2 minutes
           setTimeout(() => {
             if (pendingConfirmationResolve === resolve) {
               pendingConfirmationResolve = null;
@@ -234,7 +294,22 @@ async function handleUserCommand(text: string, requestId: string): Promise<void>
       },
     };
 
-    await executeTask(text, pageState, callbacks, tabId);
+    // Execute task and capture the final response
+    const finalResponse = await executeTask(text, pageState, callbacks, tabId, history);
+
+    // Store this exchange in the conversation buffer for future turns
+    if (finalResponse && !finalResponse.startsWith('Reached maximum') && !finalResponse.startsWith('Error')) {
+      conversationBuffer.addTurn(text, finalResponse);
+    }
+
+    // Broadcast updated turn count to UI
+    broadcastToUI({
+      type: 'TASK_STATUS',
+      status: 'complete',
+      stepDescription: `Session: ${conversationBuffer.turnCount} turn${conversationBuffer.turnCount !== 1 ? 's' : ''}`,
+      requestId,
+    });
+
   } catch (err) {
     log.error('Command failed', err);
     broadcastToUI({

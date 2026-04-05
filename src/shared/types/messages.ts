@@ -31,6 +31,11 @@ export interface CancelTaskMessage {
   requestId: RequestId;
 }
 
+export interface ClearConversationMessage {
+  type: 'CLEAR_CONVERSATION';
+  requestId: RequestId;
+}
+
 // ─── Service Worker → Content Script ────────────────────────────────────────
 
 export interface ExecuteToolMessage {
@@ -103,7 +108,8 @@ export type UIToBackgroundMessage =
   | UserCommandMessage
   | UserConfirmationMessage
   | GetPageStateMessage
-  | CancelTaskMessage;
+  | CancelTaskMessage
+  | ClearConversationMessage;
 
 export type BackgroundToContentMessage =
   | ExecuteToolMessage

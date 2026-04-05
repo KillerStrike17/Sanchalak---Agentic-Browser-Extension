@@ -9,7 +9,7 @@ import type { BackgroundToUIMessage } from '@shared/types/messages';
 
 export function useAgent() {
   const portRef = useRef<chrome.runtime.Port | null>(null);
-  const { addMessage, setTaskStatus, setConfirmation, setLoading } = useChatStore();
+  const { addMessage, setTaskStatus, setConfirmation, setLoading, clearMessages, incrementTurns, resetTurns } = useChatStore();
 
   // Connect to background via port
   useEffect(() => {
@@ -21,6 +21,7 @@ export function useAgent() {
         case 'AGENT_RESPONSE':
           addMessage({ type: 'agent', text: message.text });
           setTaskStatus('complete');
+          incrementTurns();
           break;
 
         case 'AGENT_THINKING':
@@ -39,7 +40,7 @@ export function useAgent() {
             message.totalSteps,
             message.stepDescription
           );
-          if (message.stepDescription) {
+          if (message.stepDescription && message.status === 'executing') {
             addMessage({
               type: 'action',
               text: message.stepDescription,
@@ -75,19 +76,10 @@ export function useAgent() {
 
     const requestId = generateRequestId();
 
-    // Try port first, fall back to runtime.sendMessage
     if (portRef.current) {
-      portRef.current.postMessage({
-        type: 'USER_COMMAND',
-        text,
-        requestId,
-      });
+      portRef.current.postMessage({ type: 'USER_COMMAND', text, requestId });
     } else {
-      chrome.runtime.sendMessage({
-        type: 'USER_COMMAND',
-        text,
-        requestId,
-      });
+      chrome.runtime.sendMessage({ type: 'USER_COMMAND', text, requestId });
     }
   }, [addMessage, setLoading]);
 
@@ -95,17 +87,9 @@ export function useAgent() {
     setConfirmation(null);
 
     if (portRef.current) {
-      portRef.current.postMessage({
-        type: 'USER_CONFIRMATION',
-        requestId,
-        approved,
-      });
+      portRef.current.postMessage({ type: 'USER_CONFIRMATION', requestId, approved });
     } else {
-      chrome.runtime.sendMessage({
-        type: 'USER_CONFIRMATION',
-        requestId,
-        approved,
-      });
+      chrome.runtime.sendMessage({ type: 'USER_CONFIRMATION', requestId, approved });
     }
 
     addMessage({
@@ -116,12 +100,22 @@ export function useAgent() {
   }, [setConfirmation, addMessage]);
 
   const cancelTask = useCallback(() => {
-    chrome.runtime.sendMessage({
-      type: 'CANCEL_TASK',
-      requestId: generateRequestId(),
-    });
+    const requestId = generateRequestId();
+    chrome.runtime.sendMessage({ type: 'CANCEL_TASK', requestId });
     setTaskStatus('cancelled');
   }, [setTaskStatus]);
 
-  return { sendCommand, confirmAction, cancelTask };
+  /** Start a new chat session: clears UI messages and resets the background conversation buffer */
+  const newChat = useCallback(() => {
+    clearMessages();
+    resetTurns();
+    const requestId = generateRequestId();
+    if (portRef.current) {
+      portRef.current.postMessage({ type: 'CLEAR_CONVERSATION', requestId });
+    } else {
+      chrome.runtime.sendMessage({ type: 'CLEAR_CONVERSATION', requestId });
+    }
+  }, [clearMessages, resetTurns]);
+
+  return { sendCommand, confirmAction, cancelTask, newChat };
 }

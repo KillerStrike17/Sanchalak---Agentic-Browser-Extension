@@ -8,6 +8,44 @@
   overflow: hidden;
 }
 
+/* ─── Session Bar ─────────────────────────────────────────────────────────── */
+.sp-session-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.sp-session-turns {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.sp-new-chat-btn {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sp-new-chat-btn:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+.sp-new-chat-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ─── Header ──────────────────────────────────────────────────────────────── */
 .sp-header {
   display: flex;

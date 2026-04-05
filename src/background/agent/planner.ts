@@ -1,15 +1,14 @@
 // ─── Agent Planner: ReAct Loop ─────────────────────────────────────────────
 // The brain of Sanchalak. Decomposes user goals into actions using LLM.
 
-import type { AgentPlan, LLMMessage, LLMToolCall } from '@shared/types/agent';
+import type { LLMMessage, LLMToolCall } from '@shared/types/agent';
 import type { ToolResult } from '@shared/types/tools';
 import type { PageState } from '@shared/types/dom';
 import { createLLMClient } from '../llm/provider';
 import { getActiveLLMConfig } from '@shared/storage';
 import { toolRegistry } from '../tools/tool-registry';
-import { buildSystemPrompt, buildTaskMessage, formatPageContext } from './prompts';
+import { buildSystemPrompt, buildTaskMessage } from './prompts';
 import { classifyAction, getSafetyReason } from '@shared/safety';
-import { broadcastToUI } from '@shared/messaging';
 import { addAuditLog } from '@shared/storage';
 import { createLogger } from '@shared/logger';
 import { MAX_PLAN_STEPS } from '@shared/constants';
@@ -28,15 +27,19 @@ export interface PlannerCallbacks {
 
 /**
  * Execute a user task using the ReAct loop.
- * This is the main entry point for the agent.
+ *
+ * @param conversationHistory - Prior turns from the conversation buffer, injected
+ *   between the system prompt and the current user message for multi-turn context.
+ * @returns The agent's final text response (stored in the conversation buffer).
  */
 export async function executeTask(
   userGoal: string,
   pageState: PageState | null,
   callbacks: PlannerCallbacks,
-  tabId: number
-): Promise<void> {
-  log.info('Starting task', { goal: userGoal });
+  tabId: number,
+  conversationHistory: LLMMessage[] = []
+): Promise<string> {
+  log.info('Starting task', { goal: userGoal, priorTurns: Math.floor(conversationHistory.length / 2) });
   callbacks.onStatusChange('planning');
 
   try {
@@ -45,9 +48,10 @@ export async function executeTask(
     const tools = toolRegistry.getDescriptions();
     const systemPrompt = buildSystemPrompt(tools);
 
-    // Build initial conversation
+    // Build conversation: system → prior history → current user message
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
+      ...conversationHistory,
       { role: 'user', content: buildTaskMessage(userGoal, pageState || undefined) },
     ];
 
@@ -59,23 +63,22 @@ export async function executeTask(
       callbacks.onStatusChange('executing', step, MAX_PLAN_STEPS);
       log.info(`ReAct step ${step}`);
 
-      // Call LLM
       const response = await client.chat(messages, tools);
 
-      // If LLM returned text content, it might be thinking or responding
       if (response.content) {
         callbacks.onThinking(response.content);
       }
 
-      // If no tool calls, the LLM is done — it's providing a final response
+      // No tool calls → LLM is done, this is the final answer
       if (!response.toolCalls || response.toolCalls.length === 0) {
+        const finalText = response.content || 'Task completed.';
         callbacks.onStatusChange('complete');
-        callbacks.onComplete(response.content);
-        log.info('Task complete', { response: response.content.substring(0, 200) });
-        return;
+        callbacks.onComplete(finalText);
+        log.info('Task complete', { response: finalText.substring(0, 200) });
+        return finalText;
       }
 
-      // Add the assistant message with tool calls (once, before executing tools)
+      // Add the assistant message with tool calls
       messages.push({
         role: 'assistant',
         content: response.content || '',
@@ -86,7 +89,6 @@ export async function executeTask(
       for (const toolCall of response.toolCalls) {
         const result = await executeToolCall(toolCall, tabId, callbacks);
 
-        // Add tool result
         messages.push({
           role: 'tool',
           content: JSON.stringify(result),
@@ -94,7 +96,6 @@ export async function executeTask(
           toolName: toolCall.name,
         });
 
-        // Log for audit
         await addAuditLog({
           id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           timestamp: Date.now(),
@@ -109,12 +110,15 @@ export async function executeTask(
     }
 
     // Max steps reached
+    const errMsg = `Reached maximum steps (${MAX_PLAN_STEPS}). Task may be too complex.`;
     callbacks.onStatusChange('error');
-    callbacks.onError(`Reached maximum steps (${MAX_PLAN_STEPS}). Task may be too complex.`);
+    callbacks.onError(errMsg);
+    return errMsg;
   } catch (err) {
     log.error('Task failed', err);
     callbacks.onStatusChange('error');
     callbacks.onError(String(err));
+    return String(err);
   }
 }
 
@@ -133,37 +137,26 @@ async function executeToolCall(
 
   const safetyLevel = classifyAction(toolCall.name, toolCall.arguments);
 
-  // Blocked actions
   if (safetyLevel === 'block') {
     const reason = getSafetyReason(toolCall.name);
-    callbacks.onThinking(`⚠️ Blocked action: ${toolCall.name}. ${reason}`);
-    return {
-      success: false,
-      error: `Action blocked for safety: ${reason}`,
-    };
+    callbacks.onThinking(`⚠️ Blocked: ${toolCall.name}. ${reason}`);
+    return { success: false, error: `Action blocked for safety: ${reason}` };
   }
 
-  // Actions requiring confirmation
   if (safetyLevel === 'confirm') {
     const reason = getSafetyReason(toolCall.name);
-    const approved = await callbacks.onNeedConfirmation(
-      toolCall.name,
-      toolCall.arguments,
-      reason
-    );
+    const approved = await callbacks.onNeedConfirmation(toolCall.name, toolCall.arguments, reason);
     if (!approved) {
       return { success: false, error: 'User rejected the action' };
     }
   }
 
-  // Execute the tool
   callbacks.onAction(toolCall.name, toolCall.arguments);
   const startTime = Date.now();
 
   try {
     const result = await tool.execute(toolCall.arguments);
-    const duration = Date.now() - startTime;
-    log.info(`Tool executed: ${toolCall.name}`, { duration, success: result.success });
+    log.info(`Tool executed: ${toolCall.name}`, { durationMs: Date.now() - startTime, success: result.success });
     callbacks.onResult(toolCall.name, result);
     return result;
   } catch (err) {

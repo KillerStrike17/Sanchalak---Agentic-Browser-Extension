@@ -1,7 +1,7 @@
 // ─── Side Panel: Zustand Store ─────────────────────────────────────────────
 
 import { create } from 'zustand';
-import type { TaskStatus, ActionLogEntry } from '@shared/types/messages';
+import type { TaskStatus } from '@shared/types/messages';
 
 export interface ChatMessage {
   id: string;
@@ -26,12 +26,16 @@ interface ChatState {
   totalSteps: number;
   isLoading: boolean;
   confirmation: ConfirmationRequest | null;
+  /** Number of completed conversation turns in this session */
+  sessionTurns: number;
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
   setTaskStatus: (status: TaskStatus, step?: number, total?: number, desc?: string) => void;
   setLoading: (loading: boolean) => void;
   setConfirmation: (conf: ConfirmationRequest | null) => void;
   clearMessages: () => void;
+  incrementTurns: () => void;
+  resetTurns: () => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -42,6 +46,7 @@ export const useChatStore = create<ChatState>((set) => ({
   totalSteps: 0,
   isLoading: false,
   confirmation: null,
+  sessionTurns: 0,
 
   addMessage: (msg) =>
     set((state) => ({
@@ -68,5 +73,9 @@ export const useChatStore = create<ChatState>((set) => ({
 
   setConfirmation: (conf) => set({ confirmation: conf }),
 
-  clearMessages: () => set({ messages: [], taskStatus: 'idle' }),
+  clearMessages: () => set({ messages: [], taskStatus: 'idle', sessionTurns: 0 }),
+
+  incrementTurns: () => set((state) => ({ sessionTurns: state.sessionTurns + 1 })),
+
+  resetTurns: () => set({ sessionTurns: 0 }),
 }));
